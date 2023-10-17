@@ -1,0 +1,29 @@
+os: Visual Studio 2019
+clone_depth: 5
+version: "{branch}.{build}"
+environment:
+  matrix:
+    # We use gcc from MSYS2 because it is the most recent compiler version available on
+    # AppVeyor. Note: gcc.exe only works properly if the corresponding bin/ directory is
+    # contained in PATH.
+    - SDVN_ARCH: amd64
+      SDVN_CC: C:\msys64\mingw64\bin\gcc.exe
+      PATH: C:\msys64\mingw64\bin;C:\Program Files (x86)\NSIS\;%PATH%
+    - SDVN_ARCH: 386
+      SDVN_CC: C:\msys64\mingw32\bin\gcc.exe
+      PATH: C:\msys64\mingw32\bin;C:\Program Files (x86)\NSIS\;%PATH%
+
+install:
+  - git submodule update --init --depth 1
+  - go version
+  - "%SDVN_CC% --version"
+
+build_script:
+  - go run build\ci.go install -dlgo -arch %SDVN_ARCH% -cc %SDVN_CC%
+
+after_build:
+  - go run build\ci.go archive -arch %SDVN_ARCH% -type zip -signer WINDOWS_SIGNING_KEY -upload sdvnstore/builds
+  - go run build\ci.go nsis -arch %SDVN_ARCH% -signer WINDOWS_SIGNING_KEY -upload sdvnstore/builds
+
+test_script:
+  - go run build\ci.go test -dlgo -arch %SDVN_ARCH% -cc %SDVN_CC% -coverage
